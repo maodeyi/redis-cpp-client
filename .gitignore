@@ -1,0 +1,16 @@
+*.swp
+*.bak
+
+*.o
+*.so
+*.lo
+
+*.a
+*.la
+
+test
+cluster_test
+
+*.aof
+*.rdb
+nodes.conf
