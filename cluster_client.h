@@ -25,7 +25,7 @@ class ClusterClient {
         explicit ClusterClient():curr_cr_(NULL) {};
         ~ClusterClient() {};
         int32_t Init(const char *redis_master_ips);
-		 int32_t Init(const char *redis_master_ips, const char *password);
+		int32_t Init(const char *redis_master_ips, string password);
         int32_t Uninit();
         bool cluster_slots();
         void show_clients();
@@ -57,6 +57,7 @@ class ClusterClient {
         ClusterRedis *curr_cr_;
         vector<ClusterSlots> slots_;
         bool rehashed_;
+		string password;
 
         // ip_list format: <ip:port>;<ip:port>;...
         // 192.168.0.1:6379;192.168.0.2:6379;...
@@ -64,7 +65,8 @@ class ClusterClient {
         // ip_addr format: <ip:port>
         // 192.168.0.1:6379
         int32_t add_new_client(const char *ip_addr);
-        ClusterClient(const ClusterClient&);
+		int32_t add_new_client(const char *ip_addr, const char *password);
+		ClusterClient(const ClusterClient&);
         ClusterClient& operator=(const ClusterClient&);
 };
 

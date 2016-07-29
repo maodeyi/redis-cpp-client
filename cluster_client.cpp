@@ -27,6 +27,7 @@ int32_t ClusterClient::Init(const char *redis_master_ips)
         logg("ERROR", "Init masters %s failed!", redis_master_ips);
         return -1;
     }
+	this->password = "";
 
     std::vector<pair<string ,int> >::iterator itr = cluster_masters.begin();
     for (; itr != cluster_masters.end(); ++itr) {
@@ -35,7 +36,7 @@ int32_t ClusterClient::Init(const char *redis_master_ips)
         snprintf(addr, IP_ADDR_LEN, "%s:%d", itr->first.c_str(), itr->second);
 
         ClusterRedis *cr = new ClusterRedis;
-        if (cr->Init(itr->first.c_str(), itr->second) < 0) { 
+        if (cr->Init(itr->first.c_str(), itr->second,true, true) < 0) { 
             cr->UnInit();
             delete cr;
             continue;
@@ -64,13 +65,14 @@ int32_t ClusterClient::Init(const char *redis_master_ips)
 }
 
 
-int32_t ClusterClient::Init(const char *redis_master_ips, const char *password)
+int32_t ClusterClient::Init(const char *redis_master_ips, string password)
 {
     ip_list_unserailize(redis_master_ips);
     if (cluster_masters.size() == 0) {
         logg("ERROR", "Init masters %s failed!", redis_master_ips);
         return -1;
     }
+	this->password = password;
 
     std::vector<pair<string ,int> >::iterator itr = cluster_masters.begin();
     for (; itr != cluster_masters.end(); ++itr) {
@@ -79,7 +81,7 @@ int32_t ClusterClient::Init(const char *redis_master_ips, const char *password)
         snprintf(addr, IP_ADDR_LEN, "%s:%d", itr->first.c_str(), itr->second);
 
         ClusterRedis *cr = new ClusterRedis;
-        if (cr->Init(itr->first.c_str(), itr->second, password) < 0) { 
+        if (cr->Init(itr->first.c_str(), itr->second, this->password.c_str(), true , true) < 0) { 
             cr->UnInit();
             delete cr;
             continue;
@@ -166,7 +168,10 @@ bool ClusterClient::startup()
         for (; itr2 != itr->ip_ports_.end(); ++itr2) {
             ClusterRedis *cr = new ClusterRedis;
             // test will_try is flase
-            cr->Init(itr2->first.c_str(), itr2->second, is_master, false);
+            if(this->password != "")
+				cr->Init(itr2->first.c_str(), itr2->second, password, is_master, false);
+			else
+           		cr->Init(itr2->first.c_str(), itr2->second, is_master, false);
             // the node may not connect tmp
             itr->add_node(cr, is_master);
             if (is_master) is_master = false;
@@ -834,7 +839,6 @@ int32_t ClusterClient::String_Get(const char *key, string &value)
     return res;
 }
 #endif
-
 int32_t ClusterClient::add_new_client(const char *ip_addr)
 {
     char ip_buf[IP_ADDR_LEN] = {0};
@@ -848,6 +852,41 @@ int32_t ClusterClient::add_new_client(const char *ip_addr)
 
         ClusterRedis *cr = new ClusterRedis;
         if (cr->Init(ip_buf, port)) {
+            cr->UnInit();
+            delete cr;
+            return CLUSTER_ERR;
+        }
+        pair<map<string, ClusterRedis *>::iterator, bool> ret;
+        ret = clients.insert(pair<string,
+                       ClusterRedis *>(string(ip_addr), cr));
+        if (ret.second == false) {
+            logg("ERROR", "insert <%s, %p> failed, already existed!",
+                 ret.first->first.c_str(), ret.first->second);
+            cr->UnInit();
+            delete cr;
+            return CLUSTER_ERR;
+        }
+        curr_cr_ = cr;
+
+        return CLUSTER_OK;
+    }
+
+    return CLUSTER_ERR;
+}
+
+int32_t ClusterClient::add_new_client(const char *ip_addr, const char *password)
+{
+    char ip_buf[IP_ADDR_LEN] = {0};
+    int32_t port = 0;
+    const char *ptr = NULL;
+
+    // add new client
+    if ((ptr = std::strchr(ip_addr, ':')) != NULL) {
+        strncpy(ip_buf, ip_addr, ptr - ip_addr);
+        port = std::atoi(ptr + 1);
+
+        ClusterRedis *cr = new ClusterRedis;
+        if (cr->Init(ip_buf, port, password)) {
             cr->UnInit();
             delete cr;
             return CLUSTER_ERR;

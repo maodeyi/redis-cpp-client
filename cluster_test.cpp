@@ -5,6 +5,7 @@
  * Cluster test
  */
 
+
 #include <iostream>
 #include  <sys/time.h>
 #include  <cstdio>
@@ -23,7 +24,7 @@ int main(int argc, char *argv[])
 
     ClusterClient cr;
 
-    cr.Init("127.0.0.1:7000;127.0.0.1:7001;127.0.0.1:7002");
+    cr.Init("10.150.110.173:6001", "84LNEO49P7");
     cr.show_clients();
     cr.startup();
     cr.show_slots();
@@ -57,7 +58,7 @@ int main(int argc, char *argv[])
                             (end.tv_usec - start.tv_usec) / 1000;
             cout << time_use_msec << " Get key: "
                 << line 
-                //<< " " << value
+                << " " << value
                 << " succeed"<< endl;
         } else {
             cout << time_use_msec << " Get key: "

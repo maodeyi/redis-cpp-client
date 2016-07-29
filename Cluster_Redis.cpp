@@ -13,7 +13,7 @@
 
 ClusterRedis::ClusterRedis():_redisIP(NULL), _redisPort(0),
 _redisContext(NULL), _redisReply(NULL),
-is_master_(false), readonly_(false) {
+is_master_(false), readonly_(false), password("") {
 	// TODO Auto-generated constructor stub
 
 }
@@ -36,21 +36,55 @@ int32_t ClusterRedis::Init() {
 		return -2;
 	}
 
-	//test, connect Redis-server
-	//if (this->Connect_Ping()) return -3;
-	if (!is_master_) {
-	    _redisReply = (redisReply *)redisCommand(_redisContext, "readonly");
-	    if (_redisReply) {
-		if (_redisReply->type == REDIS_REPLY_STATUS
-		    && !strcmp(_redisReply->str, "OK"))
-		{
-		    logg(DEBUG, "set to readonly");
-		    readonly_ = true;
-		    return 0;
+	if(this->password == ""){
+		printf("has no password cluster_redis");
+		//test, connect Redis-server
+		//if (this->Connect_Ping()) return -3;
+		if (!is_master_) {
+			_redisReply = (redisReply *)redisCommand(_redisContext, "readonly");
+			if (_redisReply) {
+			if (_redisReply->type == REDIS_REPLY_STATUS
+				&& !strcmp(_redisReply->str, "OK"))
+			{
+				logg(DEBUG, "set to readonly");
+				readonly_ = true;
+				return 0;
+			}
+			}
+			return -2;
 		}
-	    }
-	    return -2;
+
 	}
+	else{
+		printf("has password cluster_redis");
+		string auth = "auth " + this->password;
+		_redisReply = (redisReply *)redisCommand(_redisContext, auth.c_str());
+		if(_redisReply){
+			if (_redisReply->type == REDIS_REPLY_STATUS
+						&& !strcmp(_redisReply->str, "OK"))
+				{
+					string auth = "auth " + this->password;
+					logg(ERROR, "ok auth %s\n", auth.c_str());
+					if (!is_master_) {
+						_redisReply = (redisReply *)redisCommand(_redisContext, "readonly");
+						if (_redisReply) {
+							if (_redisReply->type == REDIS_REPLY_STATUS
+								&& !strcmp(_redisReply->str, "OK"))
+							{
+								logg(DEBUG, "set to readonly");
+								readonly_ = true;
+								return 0;
+							}else
+								return -2;
+						}
+						return -2;
+					}
+				}
+			else
+				return -2;
+		}
+	}
+
 
 	this->FreeSources();
 	return 0;
@@ -58,7 +92,7 @@ int32_t ClusterRedis::Init() {
 
 int32_t ClusterRedis::Init(const char *redis_ip, const int32_t redis_port, bool is_master, bool will_try) {
 	if (!redis_ip) return -1;
-
+	printf("no password\n");
 	struct timeval timeout = { 1, 500000}; // 1.5 seconds
 	// test will_try
 	if (will_try)
@@ -97,9 +131,10 @@ int32_t ClusterRedis::Init(const char *redis_ip, const int32_t redis_port, bool 
 	return 0;
 }
 
-int32_t ClusterRedis::Init(const char *redis_ip, const int32_t redis_port, bool is_master, bool will_try, const char * password) {
+int32_t ClusterRedis::Init(const char *redis_ip, const int32_t redis_port, string password, bool is_master, bool will_try) {
 	if (!redis_ip) return -1;
 
+	this->password = password;
 	struct timeval timeout = { 1, 500000}; // 1.5 seconds
 	// test will_try
 	if (will_try)
@@ -120,24 +155,30 @@ int32_t ClusterRedis::Init(const char *redis_ip, const int32_t redis_port, bool 
 
 	//test, connect Redis-server
 	//if (this->Connect_Ping()) return -3;
-	_redisReply = (redisReply *)redisCommand(_redisContext, "auth " + password);
+	string auth = "auth ";
+	auth = auth + this->password;
+	printf("command %s\n", auth.c_str());
+	_redisReply = (redisReply *)redisCommand(_redisContext, auth.c_str());
 	if(_redisReply){
 		if (_redisReply->type == REDIS_REPLY_STATUS
 					&& !strcmp(_redisReply->str, "OK"))
 			{
+				logg(ERROR, "ok auth %s\n", auth.c_str());
 				if (!is_master_) {
 				    _redisReply = (redisReply *)redisCommand(_redisContext, "readonly");
 				    if (_redisReply) {
-					if (_redisReply->type == REDIS_REPLY_STATUS
-					    && !strcmp(_redisReply->str, "OK"))
-					{
-					    readonly_ = true;
-					    return 0;
-					}
+						if (_redisReply->type == REDIS_REPLY_STATUS
+						    && !strcmp(_redisReply->str, "OK"))
+						{
+						    readonly_ = true;
+						    return 0;
+						}else
+							return -2;
 				    }
 				    return -2;
 				}
 			}
+		else
 			return -2;
 	}else{
 		return -2;
@@ -324,9 +365,10 @@ redisReply *ClusterRedis::redis_vCommand(const char *format, va_list ap)
 	    logg("ERROR", "%s", buf);
 	}
 	FreeSources();
-	if (ReConnect() < 0) return NULL;
+/*	if (ReConnect() < 0) return NULL;
 	va_copy(args, ap);
-	reply = (redisReply *)redisvCommand(_redisContext, format, args);
+	reply = (redisReply *)redisvCommand(_redisContext, format, args);*/
+	
 	return reply;
     }
 

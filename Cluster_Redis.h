@@ -52,6 +52,7 @@ public:
 	virtual ~ClusterRedis();
 
 	int32_t Init(const char *redis_ip, const int32_t redis_port, bool is_master = false, bool will_try = true);
+	int32_t	Init(const char *redis_ip, const int32_t redis_port, string  password, bool is_master = false, bool will_try=true) ;
 	int32_t UnInit();
 	int32_t FreeSources();
 	int32_t ReConnect();
@@ -113,6 +114,7 @@ private:
 	deque<RetInfo *> _retInfoList;
 	bool is_master_;
 	bool readonly_;
+	string password;
 };
 
 #endif /* CLUSTER_REDIS_H_ */
